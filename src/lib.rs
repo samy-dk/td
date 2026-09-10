@@ -22,7 +22,7 @@ pub use error::{ApiError, ValidateError};
 pub use events::GameEvent;
 pub use ids::*;
 pub use loadout::LoadoutState;
-pub use map::{Cell, MapDef, Vec2};
+pub use map::{Cell, MapDef, PathValidationError, Tile, TileKind, Vec2, HEIGHT_MAX, HEIGHT_MIN};
 pub use modules::{BaseStats, ModuleCatalog, ModuleCost};
 pub use research::ResearchState;
 pub use sim::{RunState, Sim, SimState};
@@ -222,5 +222,31 @@ mod tests {
     fn module_count_is_34() {
         // 4+4+4+8+6+8 = 34
         assert_eq!(4 + 4 + 4 + 8 + 6 + 8, 34);
+    }
+
+    #[test]
+    fn place_only_on_placeable() {
+        let mut sim = sim_starter();
+        let id = sim.assemble_design(fence_dart()).expect("assemble");
+        // Path cell is not placeable
+        let err = sim
+            .place_tower(PlaceSource::Design(id), Cell { x: 4, y: 4 })
+            .unwrap_err();
+        assert_eq!(err, ApiError::InvalidPlacement);
+        // Blocked cell
+        let err = sim
+            .place_tower(PlaceSource::Design(id), Cell { x: 0, y: 0 })
+            .unwrap_err();
+        assert_eq!(err, ApiError::InvalidPlacement);
+        // Placeable cell OK
+        let tid = sim
+            .place_tower(PlaceSource::Design(id), Cell { x: 3, y: 2 })
+            .expect("place");
+        assert_eq!(tid, TowerInstanceId(1));
+        // Occupied placeable fails
+        let err = sim
+            .place_tower(PlaceSource::Design(id), Cell { x: 3, y: 2 })
+            .unwrap_err();
+        assert_eq!(err, ApiError::InvalidPlacement);
     }
 }

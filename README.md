@@ -21,7 +21,7 @@ Tower-defense game **API contract skeleton** in Rust (edition 2021).
 | `design` | `TowerDesign`, cost = sum of catalog module costs |
 | `validate` | Structural + unlock validation |
 | `research` / `loadout` | Unlock and loadout slot state |
-| `map` / `enemy` / `wave` / `tower` | Minimal world types |
+| `map` / `enemy` / `wave` / `tower` | Grid map (`TileKind` + height), enemies, waves, towers |
 | `sim` | `Sim::{new, validate_design, assemble_design, set_loadout_slot, unlock, place_tower, sell_tower, start_wave, tick, state}` |
 | `events` / `error` | `GameEvent`, `ApiError`, `ValidateError` |
 
@@ -43,7 +43,3 @@ cargo test
 ```
 
 Requires `serde` (derive). Tests that need JSON roundtrip pull in `serde_json` as a **dev-dependency**.
-
-## Docs
-
-See `docs/` for the game API contract, module catalog, and design locks.

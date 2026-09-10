@@ -3,8 +3,18 @@ name = "td_core"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "td_workshop"
+path = "src/bin/td_workshop.rs"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# eframe 0.27 + glow/x11 only — avoids newest wayland/icu stacks that need rustc ≥1.86.
+eframe = { version = "=0.27.2", default-features = false, features = ["default_fonts", "glow", "x11"] }
+egui = "=0.27.2"
+# Direct pins so cargo cannot float past rustc 1.85-compatible releases.
+image = "=0.24.9"
+url = "=2.5.2"
 
 [dev-dependencies]
-serde_json = "1"
