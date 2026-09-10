@@ -2054,9 +2054,11 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "egui",
+ "home",
  "image",
  "serde",
  "serde_json",
+ "smithay-clipboard",
  "url",
 ]
 

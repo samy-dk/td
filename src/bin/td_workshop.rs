@@ -197,22 +197,6 @@ impl WorkshopApp {
         }
     }
 
-    fn save_as_dialog(&mut self) {
-        // File dialogs deferred (no rfd/gtk on this toolchain); use Save to current path.
-        self.status = format!(
-            "Save As unavailable in this build; use Save ({})",
-            self.file_path.display()
-        );
-    }
-
-    fn open_dialog(&mut self) {
-        // File dialogs deferred (no rfd/gtk on this toolchain); use Load on current path.
-        self.status = format!(
-            "Open dialog unavailable in this build; use Load ({})",
-            self.file_path.display()
-        );
-    }
-
     fn new_map(&mut self) {
         let w = self.new_w.clamp(2, 64);
         let d = self.new_d.clamp(2, 64);
@@ -243,16 +227,12 @@ impl eframe::App for WorkshopApp {
                         self.new_map();
                         ui.close_menu();
                     }
-                    if ui.button("Open…").clicked() {
-                        self.open_dialog();
-                        ui.close_menu();
-                    }
                     if ui.button("Save").clicked() {
                         self.save_map();
                         ui.close_menu();
                     }
-                    if ui.button("Save as…").clicked() {
-                        self.save_as_dialog();
+                    if ui.button("Load").clicked() {
+                        self.load_map();
                         ui.close_menu();
                     }
                     ui.separator();
@@ -364,7 +344,11 @@ impl WorkshopApp {
                 }
 
                 ui.separator();
-                ui.label("I/O");
+                ui.label("I/O (edit path, then Save/Load)");
+                let mut path_str = self.file_path.display().to_string();
+                if ui.text_edit_singleline(&mut path_str).changed() {
+                    self.file_path = PathBuf::from(path_str);
+                }
                 ui.horizontal(|ui| {
                     if ui.button("Save").clicked() {
                         self.save_map();
@@ -373,14 +357,9 @@ impl WorkshopApp {
                         self.load_map();
                     }
                 });
-                ui.horizontal(|ui| {
-                    if ui.button("Save as…").clicked() {
-                        self.save_as_dialog();
-                    }
-                    if ui.button("Open…").clicked() {
-                        self.open_dialog();
-                    }
-                });
+                if ui.button("Use packs/dev_map.json").clicked() {
+                    self.file_path = PathBuf::from("packs/dev_map.json");
+                }
                 if ui.button("Load stub sample").clicked() {
                     self.load_stub();
                 }
@@ -473,7 +452,8 @@ fn draw_topdown_grid(ui: &mut egui::Ui, app: &mut WorkshopApp) {
         ui.allocate_painter(EVec2::new(grid_w + pad * 2.0, grid_h + pad * 2.0), Sense::click_and_drag());
     let origin = response.rect.min + EVec2::new(pad, pad);
 
-    // Paint interaction
+    // Paint interaction: one brush apply per cell while the pointer is down.
+    // Raise/Lower/Spawn/Leak also use that rule so a drag does not spam ±1.
     if response.drag_started() || response.clicked() {
         app.painting = true;
         app.last_paint_cell = None;
@@ -488,18 +468,7 @@ fn draw_topdown_grid(ui: &mut egui::Ui, app: &mut WorkshopApp) {
             let ly = ((pos.y - origin.y) / cell).floor() as i32;
             let cell_pos = Cell::new(lx, ly);
             if app.map.in_bounds(cell_pos) && app.last_paint_cell != Some(cell_pos) {
-                // Raise/Lower: once per cell per stroke to avoid runaway
-                let once = matches!(app.tool, Tool::Raise | Tool::Lower | Tool::Spawn | Tool::Leak);
-                if !once || app.last_paint_cell.is_none() || app.last_paint_cell != Some(cell_pos) {
-                    if once {
-                        // only apply if entering a new cell (or first)
-                        if app.last_paint_cell != Some(cell_pos) {
-                            app.apply_brush(cell_pos);
-                        }
-                    } else {
-                        app.apply_brush(cell_pos);
-                    }
-                }
+                app.apply_brush(cell_pos);
                 app.last_paint_cell = Some(cell_pos);
             }
         }
@@ -819,4 +788,30 @@ fn save_map_json(map: &MapDef, path: &PathBuf) -> Result<(), String> {
 fn load_map_json(path: &PathBuf) -> Result<MapDef, String> {
     let data = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     serde_json::from_str(&data).map_err(|e| e.to_string())
+}
+
+
+#[cfg(test)]
+mod workshop_tests {
+    use super::*;
+
+    #[test]
+    fn rebuild_path_follows_orthogonal_path_to_leak() {
+        let mut map = MapDef::stub();
+        let path = rebuild_path_from_spawn(&map).expect("rebuild");
+        assert_eq!(path.first(), Some(&map.spawn));
+        assert_eq!(path.last(), Some(&map.leak));
+        assert!(map.validate_path().is_ok() || {
+            map.path = path.clone();
+            map.validate_path().is_ok()
+        });
+        map.path = path;
+        assert!(map.validate_path().is_ok());
+    }
+
+    #[test]
+    fn parse_waypoints_arrows() {
+        let p = parse_waypoints("0,4 → 1,4 -> 2,4").unwrap();
+        assert_eq!(p, vec![Cell::new(0, 4), Cell::new(1, 4), Cell::new(2, 4)]);
+    }
 }

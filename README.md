@@ -27,6 +27,31 @@ Tower-defense game **API contract skeleton** in Rust (edition 2021).
 
 Balance numbers are marked `// STUB`.
 
+## Workshop (Map Studio)
+
+Phase A native desktop editor (`egui` / `eframe`) for authoring grid maps with height.
+
+```bash
+cargo run --bin td_workshop
+```
+
+Requires a display (X11). Headless CI: `cargo build --bin td_workshop` is enough.
+
+### Map Studio features
+- New map with configurable width × depth (default 16×12)
+- Brushes: Path / Placeable / Blocked / Raise / Lower / Set Spawn / Set Leak
+- Top-down paint grid (click-drag) colored by kind, tinted/labeled by height
+- Fake-isometric extruded preview (stacked boxes by height)
+- Rebuild path: orthogonal BFS from spawn across Path tiles (prefers reaching leak)
+- `validate_path` errors shown in the status bar
+- Save/Load `map.json` via path field (default `packs/dev_map.json`)
+
+Tower Bench / Enemy Lab / Playtest menu entries are stubs (“Coming soon”).
+
+### Toolchain note
+This repo pins `eframe`/`egui` 0.27.2 (+ a few transitive crates) so it builds on **rustc 1.85**. Newer egui stacks need rustc ≥ 1.86.
+
+
 ## Validation rules
 
 1. `on_hit` length ≤ 2, no duplicates  
@@ -42,4 +67,4 @@ Balance numbers are marked `// STUB`.
 cargo test
 ```
 
-Requires `serde` (derive). Tests that need JSON roundtrip pull in `serde_json` as a **dev-dependency**.
+Requires `serde` (derive) and `serde_json` (Workshop save/load + tests).
